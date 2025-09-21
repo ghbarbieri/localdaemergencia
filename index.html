@@ -8,6 +8,10 @@
   <meta name="color-scheme" content="light dark" />
   <title>Emergência • Localização</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 '><rect width='128' height='128' rx='24' fill='%230ea5e9'/%3E%3Cpath d='M64 28a36 36 0 1036 36A36 36 0 0064 28Zm0 12a24 24 0 11-24 24A24 24 0 0164 40Z' fill='white'/%3E%3Ccircle cx='64' cy='64' r='6' fill='%230ea5e9'/%3E%3C/svg%3E" />
+  
+  <!-- BIBLIOTECA OFICIAL E COMPLETA DO GOOGLE OPEN LOCATION CODE -->
+  <script src="https://cdn.jsdelivr.net/npm/open-location-code@2.0.0/openlocationcode.min.js"></script>
+
   <style>
     :root { --bg:#0b1020; --fg:#e5f2ff; --primary:#0ea5e9; --muted:#8aa4b8; --card:#0f172a; --radius:14px; --shadow:0 8px 30px rgba(2,6,23,.18); --ok:#10b981; --warn:#f59e0b; --err:#ef4444; }
     body.light-theme { --bg:#ffffff; --fg:#020617; --primary:#0284c7; --muted:#475569; --card:#f8fafc; --shadow:0 8px 30px rgba(51, 65, 85,.1); }
@@ -96,9 +100,8 @@
   </div>
 
 <script type="module">
-  // ===== UTILS & LIBS =====
+  // ===== UTILS =====
   const $ = (s) => document.querySelector(s);
-  const OLC={encode:function(e,t,o){o=o||10;if(typeof e!=='number'||typeof t!=='number')throw new Error("Invalid lat/lng");e=Math.min(90,Math.max(-90,e));t=Math.min(180,Math.max(-180,t));let r=Math.floor((e+90)*1e7),n=Math.floor((t+180)*1e7),c='';for(let i=0;i<5;i++){c='23456789CFGHJMPQRVWX'[n%20]+'23456789CFGHJMPQRVWX'[r%20]+c;r=Math.floor(r/20);n=Math.floor(n/20)}return c.substring(0,8)+'+'+c.substring(8,10)+(o>10?c.substring(10,o-1):'')}};
   const bearing=(t,o,a,c)=>{const n=t=>t*Math.PI/180,r=t=>t*180/Math.PI;let s=Math.sin(n(c-o))*Math.cos(n(a)),l=Math.cos(n(t))*Math.sin(n(a))-Math.sin(n(t))*Math.cos(n(a))*Math.cos(n(c-o));return(r(Math.atan2(s,l))+360)%360};
   const dirFromBearing=(b)=>['Norte','Nordeste','Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste'][Math.round(b/45)%8];
   const haversine=(t,o,a,c)=>{const n=6371e3,r=t=>t*Math.PI/180,s=r(a-t),l=r(c-o),d=Math.sin(s/2)**2+Math.cos(r(t))*Math.cos(r(a))*Math.sin(l/2)**2;return 2*n*Math.atan2(Math.sqrt(d),Math.sqrt(1-d))};
@@ -115,10 +118,16 @@
     loadEmergencyContact();
     setupActionListeners();
     if (!('geolocation' in navigator)) { updateStatusBar('Geolocalização não suportada', 'err'); return; }
+    
     navigator.geolocation.watchPosition((pos) => {
       currentPosition = pos;
-      if (!hasRunFirstUpdate) { updateUI(); updateEnrichedData(); hasRunFirstUpdate = true; }
+      if (!hasRunFirstUpdate) { 
+        updateUI();
+        updateEnrichedData();
+        hasRunFirstUpdate = true;
+      }
     }, handlePositionError, { enableHighAccuracy: true });
+    
     setInterval(updateUI, UI_UPDATE_INTERVAL_MS);
     setInterval(updateEnrichedData, API_UPDATE_INTERVAL_MS);
   });
@@ -136,7 +145,13 @@
     $('#direction-speed').textContent = `${directionText} a ${speedKmh} km/h`;
     $('#coords').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
     $('#accuracy').textContent = `${Math.round(accuracy)} m`;
-    $('#pluscode').textContent = OLC.encode(latitude, longitude);
+    
+    // CORRIGIDO: Usa a biblioteca oficial OpenLocationCode que foi carregada no <head>
+    if (window.OpenLocationCode && typeof window.OpenLocationCode.encode === 'function') {
+        $('#pluscode').textContent = window.OpenLocationCode.encode(latitude, longitude);
+    } else {
+        $('#pluscode').textContent = 'Carregando...';
+    }
   }
 
   function updateEnrichedData() {
@@ -225,12 +240,8 @@
   function loadEmergencyContact() {
     const contact = localStorage.getItem(EMERGENCY_CONTACT_KEY);
     const smsBtn = $('#smsAlertBtn');
-    if (contact) {
-      smsBtn.hidden = false;
-      $('#contactNumber').value = contact;
-    } else {
-      smsBtn.hidden = true;
-    }
+    if (contact) { smsBtn.hidden = false; $('#contactNumber').value = contact; } 
+    else { smsBtn.hidden = true; }
   }
 
   function handleSaveContact() {
@@ -240,9 +251,7 @@
       localStorage.setItem(EMERGENCY_CONTACT_KEY, number);
       $('#contactModal').hidden = true;
       loadEmergencyContact();
-    } else {
-      alert("Por favor, insira um número de telefone válido.");
-    }
+    } else { alert("Por favor, insira um número de telefone válido."); }
   }
   
   function buildAlertPayload() {
@@ -252,7 +261,8 @@
   async function handleShare() {
     const payload = buildAlertPayload().replace('ALERTA DE EMERGÊNCIA:\n', '*Localização de Emergência*\n');
     if (navigator.share) {
-      try { await navigator.share({ title: 'Minha Localização de Emergência', text: payload }); } catch (err) { console.warn('Web Share API failed:', err); }
+      try { await navigator.share({ title: 'Minha Localização de Emergência', text: payload }); } 
+      catch (err) { console.warn('Web Share API failed:', err); }
     } else {
       navigator.clipboard.writeText(payload);
       if (confirm("Informações copiadas!\n\nDeseja tentar abrir o WhatsApp para colar e enviar?")) {
@@ -263,10 +273,302 @@
 
   function handleSmsAlert() {
     const contact = localStorage.getItem(EMERGENCY_CONTACT_KEY);
-    if (!contact || !currentPosition) {
-      alert("Nenhum contato de emergência configurado ou localização indisponível.");
-      return;
+    if (!contact || !currentPosition) { alert("Nenhum contato de emergência configurado ou localização indisponível."); return; }
+    const payload = buildAlertPayload();
+    window.location.href = `sms:${contact}?body=${encodeURIComponent(payload)}`;
+  }
+
+  let audioCtx, cprInterval = null;
+  async function handleCprBeep() {
+    if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if (audioCtx.state === 'suspended') { await audioCtx.resume(); }
+    if (cprInterval) {
+      clearInterval(cprInterval); cprInterval = null;
+      $('#cprBeepBtn').textContent = 'Iniciar Beep para RCP';
+    } else {
+      const beep = () => {const o=audioCtx.createOscillator(),t=audioCtx.createGain();o.connect(t),t.connect(audioCtx.destination),o.type="sine",o.frequency.value=880,t.gain.setValueAtTime(0,audioCtx.currentTime),t.gain.linearRampToValueAtTime(1,audioCtx.currentTime+.01),o.start(audioCtx.currentTime),t.gain.exponentialRampToValueAtTime(1e-5,audioCtx.currentTime+.1),o.stop(audioCtx.currentTime+.1)};
+      beep(); cprInterval = setInterval(beep, 60000 / 110);
+      $('#cprBeepBtn').textContent = 'Parar Beep';
     }
+  }
+</script>
+</body>
+</html><!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="Localização de emergência. Mostra rua, direção, velocidade, pontos de referência, coordenadas e Plus Code." />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Emergência • Localização</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 '><rect width='128' height='128' rx='24' fill='%230ea5e9'/%3E%3Cpath d='M64 28a36 36 0 1036 36A36 36 0 0064 28Zm0 12a24 24 0 11-24 24A24 24 0 0164 40Z' fill='white'/%3E%3Ccircle cx='64' cy='64' r='6' fill='%230ea5e9'/%3E%3C/svg%3E" />
+  
+  <!-- BIBLIOTECA OFICIAL E COMPLETA DO GOOGLE OPEN LOCATION CODE -->
+  <script src="https://cdn.jsdelivr.net/npm/open-location-code@2.0.0/openlocationcode.min.js"></script>
+
+  <style>
+    :root { --bg:#0b1020; --fg:#e5f2ff; --primary:#0ea5e9; --muted:#8aa4b8; --card:#0f172a; --radius:14px; --shadow:0 8px 30px rgba(2,6,23,.18); --ok:#10b981; --warn:#f59e0b; --err:#ef4444; }
+    body.light-theme { --bg:#ffffff; --fg:#020617; --primary:#0284c7; --muted:#475569; --card:#f8fafc; --shadow:0 8px 30px rgba(51, 65, 85,.1); }
+    *{ box-sizing:border-box } html,body{ height:100% }
+    body{ margin:0; font: 400 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica Neue,Arial; color:var(--fg); background:var(--bg); transition: background-color .3s, color .3s; }
+    main { display:flex; flex-direction:column; justify-content:center; text-align:center; padding: 16px; gap: 16px; min-height:100%; }
+    #status-bar { padding: 6px; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.2); transition: background-color .3s; position:fixed; top:0; left:0; right:0; z-index:100; }
+    .status-ok { background-color: var(--ok); } .status-warn { background-color: var(--warn); } .status-err { background-color: var(--err); }
+    .card { background: var(--card); border-radius: var(--radius); padding: 16px; text-align: center; margin-top: 50px; }
+    .primary-info h1 { margin: 0; font-size: clamp(2.2rem, 10vw, 4rem); line-height: 1.1; font-weight: 800; color: var(--primary); }
+    .primary-info .sub-heading { font-size: clamp(1.4rem, 5vw, 2.2rem); line-height: 1.2; font-weight: 700; color: var(--fg); margin-top: 0.5rem; }
+    .primary-info .context { font-size: clamp(1rem, 4vw, 1.4rem); color: var(--muted); margin-top: 0.5rem; }
+    .loading-text { opacity: 0.6; font-style: italic; }
+    .poi-card h2 { margin:0 0 12px 0; font-size:1.2rem; }
+    .poi-list { display: grid; gap: 10px; text-align: left; }
+    .poi-item { border-left: 3px solid var(--primary); padding-left: 10px; }
+    .poi-item .name { font-weight: 700; } .poi-item .meta { font-size: 0.9rem; color: var(--muted); } .poi-item .meta.err { color: var(--err); }
+    .secondary-info { margin-bottom: 20px; }
+    .secondary-info .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; text-align: left; }
+    .secondary-info .data-point .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .secondary-info .data-point .value { font-weight: 700; }
+    .actions { margin-top: 16px; display: grid; gap: 10px; }
+    .dial-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .actions .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-align: left; }
+    button, .btn { display:block; text-decoration: none; appearance:none; cursor:pointer; font-weight:600; font-family:inherit; font-size:inherit; background: linear-gradient(180deg, color-mix(in oklab, var(--primary), #fff 10%), var(--primary)); color:#fff; border:0; border-radius:12px; padding:12px 18px; box-shadow:var(--shadow); }
+    .btn-dial { background: var(--muted); font-size: 0.9rem; padding: 10px; }
+    .btn-cpr { background: var(--warn); } .btn-sms { background-color: #3b82f6; } .btn-alt { background: #475569; font-size: 0.9rem; padding: 10px; }
+    button:active, .btn:active { transform: translateY(1px) scale(.99); }
+    [hidden] { display: none !important; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { background: var(--card); padding: 24px; border-radius: var(--radius); max-width: 400px; width: 100%; text-align: left; }
+    .modal-content h2 { margin: 0 0 16px 0; }
+    .modal-content .form-group { display: grid; gap: 8px; }
+    .modal-content input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--muted); background: var(--bg); color: var(--fg); font-size: 1rem; }
+    .modal-content .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+  <div id="status-bar" class="status-warn">Buscando sinal de GPS...</div>
+  <main>
+    <div class="card primary-info">
+      <h1 id="address">--</h1>
+      <div id="direction-speed" class="sub-heading">-- km/h</div>
+      <div id="city-info" class="context">--</div>
+    </div>
+    <div class="card poi-card">
+      <h2>Pontos de Referência Próximos</h2>
+      <div id="pois" class="poi-list"><div class="poi-item"><div class="meta">Aguardando localização precisa...</div></div></div>
+    </div>
+    <div class="card secondary-info">
+      <div class="grid">
+        <div class="data-point"><div class="label">COORDENADAS</div><div id="coords" class="value">--</div></div>
+        <div class="data-point"><div class="label">PLUS CODE (GOOGLE)</div><div id="pluscode" class="value">--</div></div>
+        <div class="data-point"><div class="label">PRECISÃO</div><div id="accuracy" class="value">-- m</div></div>
+      </div>
+      <div class="actions">
+        <div>
+          <div class="label">LIGAR PARA EMERGÊNCIA:</div>
+          <div class="dial-actions">
+            <a href="tel:190" class="btn btn-dial">190 (Polícia)</a>
+            <a href="tel:192" class="btn btn-dial">192 (SAMU)</a>
+            <a href="tel:193" class="btn btn-dial">193 (Bombeiros)</a>
+          </div>
+        </div>
+        <button id="smsAlertBtn" class="btn-sms" hidden>Enviar Alerta SMS</button>
+        <button id="shareAll">Compartilhar Localização</button>
+        <button id="cprBeepBtn" class="btn-cpr">Iniciar Beep para RCP</button>
+        <button id="configBtn" class="btn-alt">Configurar Contato SMS</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="contactModal" class="modal-overlay" hidden>
+    <div class="modal-content">
+      <h2>Contato de Emergência para SMS</h2>
+      <div class="form-group">
+        <label for="contactNumber">Número de Telefone (com DDD)</label>
+        <input type="tel" id="contactNumber" placeholder="11987654321">
+        <small class="meta">Este número fica salvo apenas no seu aparelho.</small>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelContact" class="btn-alt">Cancelar</button>
+        <button id="saveContact">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  // ===== UTILS =====
+  const $ = (s) => document.querySelector(s);
+  const bearing=(t,o,a,c)=>{const n=t=>t*Math.PI/180,r=t=>t*180/Math.PI;let s=Math.sin(n(c-o))*Math.cos(n(a)),l=Math.cos(n(t))*Math.sin(n(a))-Math.sin(n(t))*Math.cos(n(a))*Math.cos(n(c-o));return(r(Math.atan2(s,l))+360)%360};
+  const dirFromBearing=(b)=>['Norte','Nordeste','Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste'][Math.round(b/45)%8];
+  const haversine=(t,o,a,c)=>{const n=6371e3,r=t=>t*Math.PI/180,s=r(a-t),l=r(c-o),d=Math.sin(s/2)**2+Math.cos(r(t))*Math.cos(r(a))*Math.sin(l/2)**2;return 2*n*Math.atan2(Math.sqrt(d),Math.sqrt(1-d))};
+
+  // ===== STATE =====
+  let currentPosition = null, lastApiCallCoords = { lat: 0, lon: 0 }, isOnline = true, hasRunFirstUpdate = false;
+  const UI_UPDATE_INTERVAL_MS = 2000, API_UPDATE_INTERVAL_MS = 10000;
+  const EMERGENCY_CONTACT_KEY = 'emergency:contact';
+
+  // ===== CORE LOGIC =====
+  window.addEventListener('load', () => {
+    applyTheme();
+    setupOnlineDetection();
+    loadEmergencyContact();
+    setupActionListeners();
+    if (!('geolocation' in navigator)) { updateStatusBar('Geolocalização não suportada', 'err'); return; }
+    
+    navigator.geolocation.watchPosition((pos) => {
+      currentPosition = pos;
+      if (!hasRunFirstUpdate) { 
+        updateUI();
+        updateEnrichedData();
+        hasRunFirstUpdate = true;
+      }
+    }, handlePositionError, { enableHighAccuracy: true });
+    
+    setInterval(updateUI, UI_UPDATE_INTERVAL_MS);
+    setInterval(updateEnrichedData, API_UPDATE_INTERVAL_MS);
+  });
+
+  function updateUI() {
+    if (!currentPosition) return;
+    const { latitude, longitude, accuracy, heading, speed } = currentPosition.coords;
+    if (isOnline) {
+      if (accuracy > 100) updateStatusBar(`Buscando GPS preciso... (atual: ${Math.round(accuracy)}m)`, 'warn');
+      else updateStatusBar('Sinal de GPS bom', 'ok');
+    }
+    const deg = Number.isFinite(heading) ? heading : NaN;
+    const directionText = Number.isFinite(deg) ? `Sentido ${dirFromBearing(deg)}` : 'Calculando direção';
+    const speedKmh = speed ? Math.round(speed * 3.6) : 0;
+    $('#direction-speed').textContent = `${directionText} a ${speedKmh} km/h`;
+    $('#coords').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    $('#accuracy').textContent = `${Math.round(accuracy)} m`;
+    
+    // CORRIGIDO: Usa a biblioteca oficial OpenLocationCode que foi carregada no <head>
+    if (window.OpenLocationCode && typeof window.OpenLocationCode.encode === 'function') {
+        $('#pluscode').textContent = window.OpenLocationCode.encode(latitude, longitude);
+    } else {
+        $('#pluscode').textContent = 'Carregando...';
+    }
+  }
+
+  function updateEnrichedData() {
+    if (!currentPosition || !isOnline || !hasRunFirstUpdate) return;
+    const { latitude, longitude } = currentPosition.coords;
+    const distanceMoved = haversine(lastApiCallCoords.lat, lastApiCallCoords.lon, latitude, longitude);
+    if (distanceMoved < 25 && lastApiCallCoords.lat !== 0) return;
+    lastApiCallCoords = { lat: latitude, lon: longitude };
+    $('#address').classList.add('loading-text');
+    $('#pois').innerHTML = '<div class="poi-item"><div class="meta loading-text">Atualizando...</div></div>';
+    enrichLocationData(latitude, longitude);
+    enrichPOIs(latitude, longitude);
+  }
+
+  function handlePositionError(err) { updateStatusBar(`Erro no GPS: ${err.message}`, 'err'); currentPosition = null; }
+  function updateStatusBar(text, status) { const bar = $('#status-bar'); bar.textContent = text; bar.className = `status-${status}`; }
+
+  // ===== FEATURES =====
+  function applyTheme() {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 18) document.body.classList.add('light-theme');
+    else document.body.classList.remove('light-theme');
+  }
+
+  function setupOnlineDetection() {
+    const updateStatus = () => { isOnline = navigator.onLine; if (!isOnline) updateStatusBar("Você está offline. Apenas dados de GPS.", "warn"); };
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
+  }
+
+  // ===== API FUNCTIONS =====
+  async function enrichLocationData(lat, lon) {
+    const addressEl = $('#address');
+    try {
+      const nominatimPromise = fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`);
+      const numberQuery = `[out:json];node(around:50,${lat},${lon})["addr:housenumber"];out;`;
+      const overpassPromise = fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: numberQuery });
+      const [nominatimRes, overpassRes] = await Promise.all([nominatimPromise, overpassPromise]);
+      if (!nominatimRes.ok || !overpassRes.ok) throw new Error("Falha em uma das APIs de localização");
+      const nominatimData = await nominatimRes.json();
+      const overpassData = await overpassRes.json();
+      const a = nominatimData.address || {};
+      let addressText = "Localização indisponível";
+      if (a.road) {
+        addressText = a.road;
+        if (a.house_number) { addressText += `, ${a.house_number}`; } 
+        else if (overpassData.elements.length > 0) { const nearestNumber = overpassData.elements[0].tags['addr:housenumber']; addressText += ` (próximo ao nº ${nearestNumber})`; } 
+        else { const displayNameParts = nominatimData.display_name.split(','); if (displayNameParts.length > 1 && !displayNameParts[1].includes(a.road)) { addressText += ` (próximo a ${displayNameParts[1].trim()})`; } }
+      } else { addressText = nominatimData.display_name.split(',')[0] || "Via sem nome"; }
+      addressEl.textContent = addressText;
+      $('#city-info').textContent = [a.suburb, a.city || a.town].filter(Boolean).join(', ');
+    } catch (e) { console.warn('Geocode Error:', e); addressEl.textContent = "Endereço indisponível"; } 
+    finally { addressEl.classList.remove('loading-text'); }
+  }
+
+  const poiTypeMap = { hospital: 'Hospital', police: 'Delegacia', fire_station: 'Bombeiros', pharmacy: 'Farmácia', fuel: 'Posto', supermarket: 'Supermercado', convenience: 'Conveniência' };
+  async function enrichPOIs(lat, lon) {
+    const poisEl = $('#pois');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+      const radius = 500;
+      const query = `[out:json][timeout:10];(node["amenity"~"hospital|police|fire_station|pharmacy|fuel"](around:${radius},${lat},${lon});way["amenity"~"hospital|police|fire_station|pharmacy|fuel"](around:${radius},${lat},${lon});node["shop"~"supermarket|convenience"](around:${radius},${lat},${lon});way["shop"~"supermarket|convenience"](around:${radius},${lat},${lon}););out body center;`;
+      const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query, signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      const items = j.elements.map(e => { const typeKey = e.tags?.amenity || e.tags?.shop; return { typeLabel: poiTypeMap[typeKey] || 'Ponto de Referência', name: e.tags?.name || 'Não especificado', dist: Math.round(haversine(lat, lon, e.lat || e.center.lat, e.lon || e.center.lon)), dir: dirFromBearing(bearing(lat, lon, e.lat || e.center.lat, e.lon || e.center.lon)), addr: e.tags?.['addr:street'] || null } }).sort((a,b) => a.dist - b.dist).slice(0, 5);
+      if (items.length === 0) { poisEl.innerHTML = '<div class="poi-item"><div class="meta">Nenhum ponto de referência encontrado nas proximidades.</div></div>'; return; }
+      poisEl.innerHTML = '';
+      items.forEach(item => { const div = document.createElement('div'); div.className = 'poi-item'; const addrHtml = item.addr ? `<div class="meta">${item.addr}</div>` : ''; div.innerHTML = `<div class="name">${item.typeLabel}: ${item.name}</div><div class="meta">Aprox. ${item.dist}m, direção ${item.dir}</div>${addrHtml}`; poisEl.appendChild(div); });
+    } catch(e) { console.warn('POI Error:', e); if (e.name === 'AbortError') { poisEl.innerHTML = '<div class="poi-item"><div class="meta err">A busca por referências demorou demais.</div></div>'; } else { poisEl.innerHTML = '<div class="poi-item"><div class="meta err">Não foi possível carregar os pontos de referência.</div></div>'; } }
+  }
+
+  // ===== USER ACTIONS & CONTACT MANAGEMENT =====
+  function setupActionListeners() {
+    $('#shareAll')?.addEventListener('click', handleShare);
+    $('#smsAlertBtn')?.addEventListener('click', handleSmsAlert);
+    $('#cprBeepBtn')?.addEventListener('click', handleCprBeep);
+    $('#configBtn')?.addEventListener('click', () => $('#contactModal').hidden = false);
+    $('#cancelContact')?.addEventListener('click', () => $('#contactModal').hidden = true);
+    $('#saveContact')?.addEventListener('click', handleSaveContact);
+  }
+
+  function loadEmergencyContact() {
+    const contact = localStorage.getItem(EMERGENCY_CONTACT_KEY);
+    const smsBtn = $('#smsAlertBtn');
+    if (contact) { smsBtn.hidden = false; $('#contactNumber').value = contact; } 
+    else { smsBtn.hidden = true; }
+  }
+
+  function handleSaveContact() {
+    const numberInput = $('#contactNumber');
+    const number = numberInput.value.trim();
+    if (number && !isNaN(Number(number))) {
+      localStorage.setItem(EMERGENCY_CONTACT_KEY, number);
+      $('#contactModal').hidden = true;
+      loadEmergencyContact();
+    } else { alert("Por favor, insira um número de telefone válido."); }
+  }
+  
+  function buildAlertPayload() {
+    return `ALERTA DE EMERGÊNCIA:\nEstou em: ${$('#address').textContent} (${$('#city-info').textContent}).\n${$('#direction-speed').textContent}.\nCoordenadas: ${$('#coords').textContent}\nPlus Code: ${$('#pluscode').textContent}\nLink do Maps: https://maps.google.com/?q=${currentPosition.coords.latitude},${currentPosition.coords.longitude}`.trim();
+  }
+
+  async function handleShare() {
+    const payload = buildAlertPayload().replace('ALERTA DE EMERGÊNCIA:\n', '*Localização de Emergência*\n');
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Minha Localização de Emergência', text: payload }); } 
+      catch (err) { console.warn('Web Share API failed:', err); }
+    } else {
+      navigator.clipboard.writeText(payload);
+      if (confirm("Informações copiadas!\n\nDeseja tentar abrir o WhatsApp para colar e enviar?")) {
+        window.open(`https://wa.me/?text=${encodeURIComponent(payload)}`, '_blank');
+      }
+    }
+  }
+
+  function handleSmsAlert() {
+    const contact = localStorage.getItem(EMERGENCY_CONTACT_KEY);
+    if (!contact || !currentPosition) { alert("Nenhum contato de emergência configurado ou localização indisponível."); return; }
     const payload = buildAlertPayload();
     window.location.href = `sms:${contact}?body=${encodeURIComponent(payload)}`;
   }
