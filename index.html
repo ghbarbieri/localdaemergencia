@@ -19,7 +19,7 @@
   <title>Emergência • Localização</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%230ea5e9'/%3E%3Cpath d='M64 28a36 36 0 1036 36A36 36 0 0064 28Zm0 12a24 24 0 11-24 24A24 24 0 0164 40Z' fill='white'/%3E%3Ccircle cx='64' cy='64' r='6' fill='%230ea5e9'/%3E%3C/svg%3E" />
 
-  <!-- Open Location Code (Plus Codes) — caminho correto + defer -->
+  <!-- Open Location Code (Plus Codes) -->
   <script defer src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/dist/openlocationcode.min.js"></script>
 
   <style>
@@ -30,7 +30,6 @@
     body{ margin:0; font: 400 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica Neue,Arial; color:var(--fg); background:var(--bg); transition: background-color .3s, color .3s; }
     main { display:flex; flex-direction:column; justify-content:center; text-align:center; padding: 16px; gap: 16px; min-height:100%; }
     #status-bar { padding: 6px; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.2); transition: background-color .3s; position:fixed; top:0; left:0; right:0; z-index:100; }
-    #status-bar[role="status"] { outline: none; }
     .status-ok { background-color: var(--ok); }
     .status-warn { background-color: var(--warn); }
     .status-err { background-color: var(--err); }
@@ -104,10 +103,14 @@
           <a href="tel:193" class="btn btn-dial">193 (Bombeiros)</a>
         </div>
 
+        <!-- Agora habilitado por padrão (opt-out). O usuário só precisa liberar localização do celular. -->
         <div class="consent">
           <input type="checkbox" id="enrichConsent" aria-describedby="consentHelp">
-          <label for="enrichConsent"><strong>Usar dados de rede para endereço e pontos de referência</strong><br/>
-            <small id="consentHelp" class="muted">Suas coordenadas serão enviadas a serviços OpenStreetMap (Nominatim/Overpass) para obter endereço e locais próximos.</small>
+          <label for="enrichConsent">
+            <strong>Usar dados de rede para endereço e pontos de referência</strong><br/>
+            <small id="consentHelp" class="muted">
+              Ao abrir o app, essa opção já está ativa para agilizar emergências. Suas coordenadas são enviadas a serviços OpenStreetMap (Nominatim/Overpass) para obter endereço e locais próximos. Você pode desativar a qualquer momento.
+            </small>
           </label>
         </div>
 
@@ -128,11 +131,10 @@
   const $ = (s) => document.querySelector(s);
   const CONTACT_EMAIL = ""; // opcional: ex. "contato@seu-dominio.com"
   const UI_UPDATE_INTERVAL_MS = 2000;
-  const API_MIN_DISTANCE_M = 25;     // distância para refazer chamadas
+  const API_MIN_DISTANCE_M = 25;
   const NOMINATIM_TTL_MS    = 5 * 60 * 1000;
   const POI_TTL_MS          = 5 * 60 * 1000;
-  const POI_RADIUS_M        = 600;   // adaptado por precisão
-  const CPR_BPM             = 110;   // 100–120 recomendado
+  const CPR_BPM             = 110;
   const CONSENT_KEY         = "emergencia:enrichConsent";
 
   // =========================
@@ -156,7 +158,7 @@
     const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
     return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   };
-  const tileKey = (lat, lon) => `${lat.toFixed(3)},${lon.toFixed(3)}`; // ~110m
+  const tileKey = (lat, lon) => `${lat.toFixed(3)},${lon.toFixed(3)}`;
 
   const showToast = (msg="Copiado!")=>{
     const t=$("#toast"); t.textContent=msg; t.classList.add("show");
@@ -200,27 +202,26 @@
   function deriveBearing() {
     if (!prevFix || !lastFix) return NaN;
     const v = lastFix.coords.speed ?? 0;
-    if (v < 1.5) return NaN; // muito lento ou parado
+    if (v < 1.5) return NaN;
     return bearing(prevFix.coords.latitude, prevFix.coords.longitude, lastFix.coords.latitude, lastFix.coords.longitude);
   }
 
   function plusCodeFor(lat, lon, accuracy) {
     const hasLib = typeof window.OpenLocationCode !== "undefined" && typeof window.OpenLocationCode.encode === "function";
-    // comprimento dinâmico (mais curto com baixa precisão)
     const len = accuracy > 100 ? 8 : accuracy > 30 ? 10 : 11;
     try {
       if (hasLib) return window.OpenLocationCode.encode(lat, lon, len);
     } catch(_) {}
-    // Fallback: retorna apenas coordenadas formatadas (sem quebrar UI)
     return null;
   }
 
-  function persistConsentUI(){
+  function initConsentDefaultOn(){
+    // Se não houver preferência salva, habilita por padrão (opt-out).
     const saved = localStorage.getItem(CONSENT_KEY);
-    if (saved !== null) $('#enrichConsent').checked = saved === "1";
+    const enabled = saved === null ? true : saved === "1";
+    $('#enrichConsent').checked = enabled;
     $('#enrichConsent').addEventListener('change', e=>{
       localStorage.setItem(CONSENT_KEY, e.target.checked ? "1" : "0");
-      // força atualização de dados enriquecidos quando liga
       if (e.target.checked) updateEnrichedData(true);
     });
   }
@@ -249,7 +250,7 @@
   window.addEventListener('load', () => {
     applyTheme();
     setupOnlineDetection();
-    persistConsentUI();
+    initConsentDefaultOn(); // <— habilitado por padrão
 
     if (!('geolocation' in navigator)) {
       updateStatusBar('Geolocalização não suportada', 'err');
@@ -263,7 +264,6 @@
     );
 
     setInterval(updateUI, UI_UPDATE_INTERVAL_MS);
-    // Dispara uma primeira renderização rápida
     updateUI();
   });
 
@@ -283,7 +283,6 @@
     const directionText = Number.isFinite(computedBearing) ? `Sentido ${dirFromBearing(computedBearing)}` : 'Calculando direção';
     const speedKmh = speed ? Math.round(speed * 3.6) : 0;
 
-    // Só atualiza se mudar (reduz reflow)
     const newDirSpeed = `${directionText} a ${speedKmh} km/h`;
     if ($('#direction-speed').textContent !== newDirSpeed) $('#direction-speed').textContent = newDirSpeed;
 
@@ -293,26 +292,23 @@
     const newAcc = `${Math.round(accuracy)} m`;
     if ($('#accuracy').textContent !== newAcc) $('#accuracy').textContent = newAcc;
 
-    // Plus Code
     const pc = plusCodeFor(latitude, longitude, accuracy);
     const plusEl = $('#pluscode');
     if (pc) {
       if (plusEl.textContent !== pc) plusEl.textContent = pc;
-    } else {
-      if (plusEl.textContent !== 'Indisponível') plusEl.textContent = 'Indisponível';
+    } else if (plusEl.textContent !== 'Indisponível') {
+      plusEl.textContent = 'Indisponível';
     }
 
-    // Link do Maps
     const mapsHref = `https://maps.google.com/?q=${latitude},${longitude}`;
     const linkEl = $('#mapsLink');
     if (linkEl.getAttribute('href') !== mapsHref) linkEl.setAttribute('href', mapsHref);
 
-    // Atualização de dados enriquecidos (respeita consentimento)
     await updateEnrichedData();
   }
 
   async function updateEnrichedData(force=false) {
-    const consent = $('#enrichConsent').checked;
+    const consent = $('#enrichConsent').checked; // agora default ON
     if (!consent || !lastFix || !isOnline) return;
 
     const { latitude, longitude, accuracy } = lastFix.coords;
@@ -322,7 +318,7 @@
     lastApiCallCoords = { lat: latitude, lon: longitude };
 
     $('#address').classList.add('loading-text');
-    $('#pois').replaceChildren(makeMeta('Atualizando...','loading-text'));
+    $('#pois').replaceChildren(makeMeta('Atualizando...', 'loading-text'));
 
     await Promise.all([
       enrichLocationData(latitude, longitude),
@@ -347,7 +343,6 @@
     signals.forEach(s=>s.addEventListener('abort', onAbort));
     return ctrl.signal;
   }
-
   function qs(obj){ return Object.entries(obj).filter(([,v])=>v!==undefined && v!=='').map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&'); }
 
   async function enrichLocationData(lat, lon) {
@@ -356,10 +351,8 @@
     try {
       const key = tileKey(lat, lon);
       const cached = cacheGet('nominatim', key);
-      if (cached) {
-        applyNominatim(cached, addressEl, cityEl);
-        return;
-      }
+      if (cached) { applyNominatim(cached, addressEl, cityEl); return; }
+
       const params = {
         format: 'jsonv2',
         lat, lon,
@@ -389,7 +382,6 @@
       if (a.house_number) {
         addressText += `, ${a.house_number}`;
       } else {
-        // Sem número: tenta um complemento amigável do display_name (sanitizado)
         const parts = (data.display_name || "").split(',').map(s=>s.trim()).filter(Boolean);
         if (parts.length > 1 && !parts[1].includes(a.road)) {
           addressText += ` (próximo a ${parts[1]})`;
@@ -413,7 +405,7 @@
       const cached = cacheGet('pois', key);
       if (cached) { renderPOIs(cached, lat, lon, poisEl); return; }
 
-      const radius = Math.min(Math.max(accuracy * 6, 400), 1000); // 6x precisão, com limites
+      const radius = Math.min(Math.max(accuracy * 6, 400), 1000);
       const query = `[out:json][timeout:10];
         (
           node["amenity"~"hospital|police|fire_station|pharmacy|fuel|clinic|doctors"](around:${radius},${lat},${lon});
@@ -512,7 +504,6 @@
     try {
       await navigator.clipboard.writeText(payload);
       showToast('Informações copiadas!');
-      // abre WhatsApp em nova aba
       window.open(`https://wa.me/?text=${encodeURIComponent(payload)}`, '_blank', 'noopener');
     } catch {
       alert("Não foi possível copiar automaticamente. Copie manualmente:\n\n" + payload);
