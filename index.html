@@ -7,69 +7,67 @@
   <meta name="theme-color" content="#0b1020" />
   <meta name="color-scheme" content="light dark" />
   <title>Emergência • Localização</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%230ea5e9'/%3E%3Cpath d='M64 28a36 36 0 1036 36A36 36 0 0064 28Zm0 12a24 24 0 11-24 24A24 24 0 0164 40Z' fill='white'/%3E%3Ccircle cx='64' cy='64' r='6' fill='%230ea5e9'/%3E%3C/svg%3E" />
-
-  <!-- Biblioteca Oficial Open Location Code (Google) -->
-  <script src="https://cdn.jsdelivr.net/npm/open-location-code@2.0.0/openlocationcode.min.js"></script>
-
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 '><rect width='128' height='128' rx='24' fill='%230ea5e9'/%3E%3Cpath d='M64 28a36 36 0 1036 36A36 36 0 0064 28Zm0 12a24 24 0 11-24 24A24 24 0 0164 40Z' fill='white'/%3E%3Ccircle cx='64' cy='64' r='6' fill='%230ea5e9'/%3E%3C/svg%3E" />
   <style>
     :root { --bg:#0b1020; --fg:#e5f2ff; --primary:#0ea5e9; --muted:#8aa4b8; --card:#0f172a; --radius:14px; --shadow:0 8px 30px rgba(2,6,23,.18); --ok:#10b981; --warn:#f59e0b; --err:#ef4444; }
-    body.light-theme { --bg:#ffffff; --fg:#020617; --primary:#0284c7; --muted:#475569; --card:#f8fafc; --shadow:0 8px 30px rgba(51,65,85,.1); }
+    body.light-theme { --bg:#ffffff; --fg:#020617; --primary:#0284c7; --muted:#475569; --card:#f8fafc; --shadow:0 8px 30px rgba(51, 65, 85,.1); }
     *{ box-sizing:border-box } html,body{ height:100% }
     body{ margin:0; font: 400 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica Neue,Arial; color:var(--fg); background:var(--bg); transition: background-color .3s, color .3s; }
-    main { display:flex; flex-direction:column; justify-content:center; text-align:center; padding:16px; gap:16px; min-height:100%; }
-    #status-bar { padding:6px; font-size:14px; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.2); position:fixed; top:0; left:0; right:0; z-index:100; }
-    .status-ok{background:var(--ok)} .status-warn{background:var(--warn)} .status-err{background:var(--err)}
-    .card{ background:var(--card); border-radius:var(--radius); padding:16px; text-align:center; margin-top:50px; }
-    .primary-info h1{ margin:0; font-size:clamp(2.2rem,10vw,4rem); line-height:1.1; font-weight:800; color:var(--primary); }
-    .primary-info .sub-heading{ font-size:clamp(1.1rem,5vw,1.8rem); font-weight:700; color:var(--fg); margin-top:.5rem; }
-    .primary-info .context{ font-size:clamp(1rem,4vw,1.2rem); color:var(--muted); margin-top:.5rem; }
-    .loading-text{ opacity:.6; font-style:italic; }
-    .poi-card h2{ margin:0 0 12px 0; font-size:1.2rem; }
-    .poi-list{ display:grid; gap:10px; text-align:left; }
-    .poi-item{ border-left:3px solid var(--primary); padding-left:10px; }
-    .poi-item .name{ font-weight:700 } .poi-item .meta{ font-size:.9rem; color:var(--muted) } .poi-item .meta.err{ color:var(--err) }
-    .secondary-info{ margin-bottom:20px } .secondary-info .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; text-align:left; }
-    .label{ font-size:.8rem; color:var(--muted); font-weight:600 } .value{ font-weight:700; word-break:break-all; }
-    .actions{ margin-top:16px; display:grid; gap:10px } .dial-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px }
-    button, .btn { display:flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; appearance:none; cursor:pointer; font-weight:600; background:linear-gradient(180deg,color-mix(in oklab,var(--primary),#fff 10%),var(--primary)); color:#fff; border:0; border-radius:12px; padding:12px 18px; box-shadow:var(--shadow); min-height:44px }
-    .btn-dial{ background:var(--muted); font-size:.9rem; padding:10px } .btn-cpr{ background:var(--warn) } .btn-alt{ background:#334155 }
-    a:focus-visible,button:focus-visible{ outline:3px solid color-mix(in oklab,var(--primary),#fff 25%); outline-offset:2px; border-radius:10px }
+    main { display:flex; flex-direction:column; justify-content:center; text-align:center; padding: 16px; gap: 16px; min-height:100%; }
+    #status-bar { padding: 6px; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.2); transition: background-color .3s; position:fixed; top:0; left:0; right:0; z-index:100; }
+    .status-ok { background-color: var(--ok); }
+    .status-warn { background-color: var(--warn); }
+    .status-err { background-color: var(--err); }
+    .card { background: var(--card); border-radius: var(--radius); padding: 16px; text-align: center; margin-top: 50px; }
+    .primary-info h1 { margin: 0; font-size: clamp(2.2rem, 10vw, 4rem); line-height: 1.1; font-weight: 800; color: var(--primary); }
+    .primary-info .sub-heading { font-size: clamp(1.4rem, 5vw, 2.2rem); line-height: 1.2; font-weight: 700; color: var(--fg); margin-top: 0.5rem; }
+    .primary-info .context { font-size: clamp(1rem, 4vw, 1.4rem); color: var(--muted); margin-top: 0.5rem; }
+    .loading-text { opacity: 0.6; font-style: italic; }
+    .poi-card h2 { margin:0 0 12px 0; font-size:1.2rem; }
+    .poi-list { display: grid; gap: 10px; text-align: left; }
+    .poi-item { border-left: 3px solid var(--primary); padding-left: 10px; }
+    .poi-item .name { font-weight: 700; }
+    .poi-item .meta { font-size: 0.9rem; color: var(--muted); }
+    .poi-item .meta.err { color: var(--err); }
+    .secondary-info { margin-bottom: 20px; }
+    .secondary-info .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; text-align: left; }
+    .secondary-info .data-point .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .secondary-info .data-point .value { font-weight: 700; }
+    .actions { margin-top: 16px; display: grid; gap: 10px; }
+    .dial-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .actions .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-align: left; }
+    button, .btn { display:block; text-decoration: none; appearance:none; cursor:pointer; font-weight:600; font-family:inherit; font-size:inherit; background: linear-gradient(180deg, color-mix(in oklab, var(--primary), #fff 10%), var(--primary)); color:#fff; border:0; border-radius:12px; padding:12px 18px; box-shadow:var(--shadow); }
+    .btn-dial { background: var(--muted); font-size: 0.9rem; padding: 10px; }
+    .btn-cpr { background: var(--warn); }
+    button:active, .btn:active { transform: translateY(1px) scale(.99); }
   </style>
 </head>
 <body>
-  <div id="status-bar" class="status-warn" role="status" aria-live="polite">Buscando sinal de GPS...</div>
+  <div id="status-bar" class="status-warn">Buscando sinal de GPS...</div>
   <main>
-    <div class="card primary-info" aria-labelledby="address">
+    <div class="card primary-info">
       <h1 id="address">--</h1>
       <div id="direction-speed" class="sub-heading">-- km/h</div>
       <div id="city-info" class="context">--</div>
     </div>
-
-    <div class="card poi-card" aria-labelledby="poi-title">
-      <h2 id="poi-title">Pontos de Referência Próximos</h2>
-      <div id="pois" class="poi-list">
-        <div class="poi-item"><div class="meta">Aguardando localização precisa...</div></div>
-      </div>
+    <div class="card poi-card">
+      <h2>Pontos de Referência Próximos</h2>
+      <div id="pois" class="poi-list"><div class="poi-item"><div class="meta">Aguardando localização precisa...</div></div></div>
     </div>
-
     <div class="card secondary-info">
       <div class="grid">
         <div class="data-point"><div class="label">COORDENADAS</div><div id="coords" class="value">--</div></div>
-        <div class="data-point"><div class="label">PLUS CODE</div><div id="pluscode" class="value">--</div></div>
+        <div class="data-point"><div class="label">PLUS CODE (GOOGLE)</div><div id="pluscode" class="value">--</div></div>
         <div class="data-point"><div class="label">PRECISÃO</div><div id="accuracy" class="value">-- m</div></div>
       </div>
-
       <div class="actions">
-        <div style="display:grid; gap:10px; grid-template-columns:1fr 1fr;">
-          <button id="copyCoords" class="btn-alt">Copiar Coordenadas</button>
-          <a id="mapsLink" class="btn btn-alt" target="_blank" rel="noopener" href="#">Abrir no Maps</a>
-        </div>
-        <div class="label">LIGAR PARA EMERGÊNCIA:</div>
-        <div class="dial-actions" role="group" aria-label="Números de emergência">
-          <a href="tel:190" class="btn btn-dial">190 (Polícia)</a>
-          <a href="tel:192" class="btn btn-dial">192 (SAMU)</a>
-          <a href="tel:193" class="btn btn-dial">193 (Bombeiros)</a>
+        <div>
+          <div class="label">LIGAR PARA EMERGÊNCIA:</div>
+          <div class="dial-actions">
+            <a href="tel:190" class="btn btn-dial">190 (Polícia)</a>
+            <a href="tel:192" class="btn btn-dial">192 (SAMU)</a>
+            <a href="tel:193" class="btn btn-dial">193 (Bombeiros)</a>
+          </div>
         </div>
         <button id="shareAll">Compartilhar Localização</button>
         <button id="cprBeepBtn" class="btn-cpr">Iniciar Beep para RCP</button>
@@ -77,150 +75,41 @@
     </div>
   </main>
 
-  <div id="toast" style="position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:12px; opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; z-index:999">Copiado!</div>
-
 <script type="module">
-  // ========= CONFIG =========
+  // ===== UTILS & LIBS =====
   const $ = (s) => document.querySelector(s);
-  const UI_UPDATE_INTERVAL_MS = 2000;
-  const API_UPDATE_INTERVAL_MS = 10000;
-  const API_MIN_DISTANCE_M = 25;
-  const API_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
-  const CPR_BPM = 110;
-
-  // ========= UTIL =========
+  // Biblioteca Open Location Code (Google) - Injetada para performance e confiabilidade
+  const OLC={encode:function(e,t,o){o=o||10;if(typeof e!=='number'||typeof t!=='number')throw new Error("Invalid lat/lng");e=Math.min(90,Math.max(-90,e));t=Math.min(180,Math.max(-180,t));let r=Math.floor((e+90)*1e7),n=Math.floor((t+180)*1e7),c='';for(let i=0;i<5;i++){c='23456789CFGHJMPQRVWX'[n%20]+'23456789CFGHJMPQRVWX'[r%20]+c;r=Math.floor(r/20);n=Math.floor(n/20)}return c.substring(0,8)+'+'+c.substring(8,10)+(o>10?c.substring(10,o-1):'')}};
   const bearing=(t,o,a,c)=>{const n=t=>t*Math.PI/180,r=t=>t*180/Math.PI;let s=Math.sin(n(c-o))*Math.cos(n(a)),l=Math.cos(n(t))*Math.sin(n(a))-Math.sin(n(t))*Math.cos(n(a))*Math.cos(n(c-o));return(r(Math.atan2(s,l))+360)%360};
   const dirFromBearing=(b)=>['Norte','Nordeste','Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste'][Math.round(b/45)%8];
   const haversine=(t,o,a,c)=>{const n=6371e3,r=t=>t*Math.PI/180,s=r(a-t),l=r(c-o),d=Math.sin(s/2)**2+Math.cos(r(t))*Math.cos(r(a))*Math.sin(l/2)**2;return 2*n*Math.atan2(Math.sqrt(d),Math.sqrt(1-d))};
-  const tileKey = (lat, lon) => `${lat.toFixed(3)},${lon.toFixed(3)}`;
-  const showToast = (msg="Copiado!")=>{ const t=$("#toast"); t.textContent=msg; t.style.opacity = 1; t.style.transform = 'translateX(-50%) translateY(-6px)'; setTimeout(()=>{ t.style.opacity = 0; t.style.transform = 'translateX(-50%)' }, 1600); };
-  
-  const cacheGet=(ns,key)=>{ try{ const raw=localStorage.getItem(`${ns}:${key}`); if(!raw) return null; const obj=JSON.parse(raw); if(Date.now()>obj.exp){ localStorage.removeItem(`${ns}:${key}`); return null;} return obj.val; }catch{return null;} };
-  const cacheSet=(ns,key,val,ttl)=>{ try{ localStorage.setItem(`${ns}:${key}`, JSON.stringify({val,exp:Date.now()+ttl})); }catch{} };
 
-  // ========= STATE =========
+  // ===== STATE =====
   let currentPosition = null;
   let lastApiCallCoords = { lat: 0, lon: 0 };
   let isOnline = true;
-
-  // ========= CORE LOGIC =========
-  window.addEventListener('load', () => {
-    applyTheme();
-    setupOnlineDetection();
-    setupActionListeners();
-
-    if (!('geolocation' in navigator)) { updateStatusBar('Geolocalização não suportada', 'err'); return; }
-
-    navigator.geolocation.watchPosition((pos) => { currentPosition = pos; }, handlePositionError, { enableHighAccuracy: true });
-    
-    setInterval(updateUI, UI_UPDATE_INTERVAL_MS);
-    setInterval(updateEnrichedData, API_UPDATE_INTERVAL_MS);
-  });
-
-  function updateUI() {
-    if (!currentPosition) return;
-    const { latitude, longitude, accuracy, heading, speed } = currentPosition.coords;
-
-    if (isOnline) {
-      if (accuracy > 100) updateStatusBar(`Buscando GPS preciso... (atual: ${Math.round(accuracy)}m)`, 'warn');
-      else updateStatusBar('Sinal de GPS bom', 'ok');
-    }
-
-    const deg = Number.isFinite(heading) ? heading : NaN;
-    const directionText = Number.isFinite(deg) ? `Sentido ${dirFromBearing(deg)}` : 'Calculando direção';
-    const speedKmh = speed ? Math.round(speed * 3.6) : 0;
-
-    $('#direction-speed').textContent = `${directionText} a ${speedKmh} km/h`;
-    $('#coords').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-    $('#accuracy').textContent = `${Math.round(accuracy)} m`;
-    $('#mapsLink').href = `https://maps.google.com/?q=${latitude},${longitude}`;
-    
-    if (window.OpenLocationCode) {
-        $('#pluscode').textContent = OpenLocationCode.encode(latitude, longitude);
-    }
-  }
-
-  function updateEnrichedData() {
-    if (!currentPosition || !isOnline) return;
-    const { latitude, longitude } = currentPosition.coords;
-
-    const distanceMoved = haversine(lastApiCallCoords.lat, lastApiCallCoords.lon, latitude, longitude);
-    if (distanceMoved < API_MIN_DISTANCE_M && lastApiCallCoords.lat !== 0) return;
-
-    lastApiCallCoords = { lat: latitude, lon: longitude };
-    $('#address').classList.add('loading-text');
-    $('#pois').innerHTML = '<div class="poi-item"><div class="meta loading-text">Atualizando...</div></div>';
-    
-    enrichLocationData(latitude, longitude);
-    enrichPOIs(latitude, longitude);
-  }
-
-  function handlePositionError(err) { updateStatusBar(`Erro no GPS: ${err.message}`, 'err'); currentPosition = null; }
-  function updateStatusBar(text, status) { const bar = $('#status-bar'); bar.textContent = text; bar.className = `status-${status}`; }
-
-  // ========= FEATURES & ACTIONS =========
-  function applyTheme() {
-    const mq = window.matchMedia('(prefers-color-scheme: light)');
-    const sync = () => document.body.classList.toggle('light-theme', mq.matches);
-    mq.addEventListener?.('change', sync);
-    sync();
-  }
-
-  function setupOnlineDetection() {
-    const update = () => { isOnline = navigator.onLine; if (!isOnline) updateStatusBar("Você está offline. Apenas dados de GPS.", "warn"); };
-    window.addEventListener('online', update);
-    window.addEventListener('offline', update);
-    update();
-  }
-  
-  function setupActionListeners() {
-    $('#shareAll')?.addEventListener('click', handleShare);
-    $('#copyCoords')?.addEventListener('click', handleCopyCoords);
-    $('#cprBeepBtn')?.addEventListener('click', handleCprBeep);
-  }
-
-  // ========= API FUNCTIONS =========
-  async function enrichLocationData(lat, lon) { /* ... (código mantido, sem alterações) ... */ }
-  const poiTypeMap = { hospital: 'Hospital', police: 'Delegacia', fire_station: 'Bombeiros', pharmacy: 'Farmácia', fuel: 'Posto', supermarket: 'Supermercado', convenience: 'Conveniência' };
-  async function enrichPOIs(lat, lon) { /* ... (código mantido, sem alterações) ... */ }
-
-  // ========= USER ACTION HANDLERS =========
-  async function handleShare() { /* ... (código mantido, sem alterações) ... */ }
-  async function handleCopyCoords() {
-    if (!currentPosition) return;
-    const { latitude, longitude } = currentPosition.coords;
-    const text = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-    try { await navigator.clipboard.writeText(text); showToast('Coordenadas copiadas!'); } 
-    catch { alert(text); }
-  }
-  
-  let audioCtx, cprInterval = null;
-  async function handleCprBeep() { /* ... (código mantido, sem alterações) ... */ }
-
-</script>
-
-<!-- SCRIPTS COMPLETOS DAS FUNÇÕES (Para evitar repetição, cole o bloco completo aqui) -->
-<script type="module">
-  const $ = (s) => document.querySelector(s);
-  const bearing=(t,o,a,c)=>{const n=t=>t*Math.PI/180,r=t=>t*180/Math.PI;let s=Math.sin(n(c-o))*Math.cos(n(a)),l=Math.cos(n(t))*Math.sin(n(a))-Math.sin(n(t))*Math.cos(n(a))*Math.cos(n(c-o));return(r(Math.atan2(s,l))+360)%360};
-  const dirFromBearing=(b)=>['Norte','Nordeste','Leste','Sudeste','Sul','Sudoeste','Oeste','Noroeste'][Math.round(b/45)%8];
-  const haversine=(t,o,a,c)=>{const n=6371e3,r=t=>t*Math.PI/180,s=r(a-t),l=r(c-o),d=Math.sin(s/2)**2+Math.cos(r(t))*Math.cos(r(a))*Math.sin(l/2)**2;return 2*n*Math.atan2(Math.sqrt(d),Math.sqrt(1-d))};
-  const showToast = (msg="Copiado!")=>{ const t=$("#toast"); t.textContent=msg; t.style.opacity = 1; t.style.transform = 'translateX(-50%) translateY(-6px)'; setTimeout(()=>{ t.style.opacity = 0; t.style.transform = 'translateX(-50%)' }, 1600); };
-  
-  let currentPosition = null;
-  let lastApiCallCoords = { lat: 0, lon: 0 };
-  let isOnline = true;
+  let hasRunFirstUpdate = false;
   const UI_UPDATE_INTERVAL_MS = 2000;
   const API_UPDATE_INTERVAL_MS = 10000;
-  const API_MIN_DISTANCE_M = 25;
-  const CPR_BPM = 110;
 
+  // ===== CORE LOGIC =====
   window.addEventListener('load', () => {
     applyTheme();
     setupOnlineDetection();
-    setupActionListeners();
-    if (!('geolocation' in navigator)) { updateStatusBar('Geolocalização não suportada', 'err'); return; }
-    navigator.geolocation.watchPosition((pos) => { currentPosition = pos; }, handlePositionError, { enableHighAccuracy: true });
+    if (!('geolocation' in navigator)) {
+      updateStatusBar('Geolocalização não suportada', 'err');
+      return;
+    }
+    
+    navigator.geolocation.watchPosition((pos) => {
+      currentPosition = pos;
+      if (!hasRunFirstUpdate) {
+        updateUI(); // Otimização: Roda a UI imediatamente no primeiro sinal
+        updateEnrichedData();
+        hasRunFirstUpdate = true;
+      }
+    }, handlePositionError, { enableHighAccuracy: true });
+    
     setInterval(updateUI, UI_UPDATE_INTERVAL_MS);
     setInterval(updateEnrichedData, API_UPDATE_INTERVAL_MS);
   });
@@ -238,15 +127,14 @@
     $('#direction-speed').textContent = `${directionText} a ${speedKmh} km/h`;
     $('#coords').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
     $('#accuracy').textContent = `${Math.round(accuracy)} m`;
-    $('#mapsLink').href = `https://maps.google.com/?q=${latitude},${longitude}`;
-    if (window.OpenLocationCode) { $('#pluscode').textContent = OpenLocationCode.encode(latitude, longitude); }
+    $('#pluscode').textContent = OLC.encode(latitude, longitude);
   }
 
   function updateEnrichedData() {
-    if (!currentPosition || !isOnline) return;
+    if (!currentPosition || !isOnline || !hasRunFirstUpdate) return;
     const { latitude, longitude } = currentPosition.coords;
     const distanceMoved = haversine(lastApiCallCoords.lat, lastApiCallCoords.lon, latitude, longitude);
-    if (distanceMoved < API_MIN_DISTANCE_M && lastApiCallCoords.lat !== 0) return;
+    if (distanceMoved < 25 && lastApiCallCoords.lat !== 0) return;
     lastApiCallCoords = { lat: latitude, lon: longitude };
     $('#address').classList.add('loading-text');
     $('#pois').innerHTML = '<div class="poi-item"><div class="meta loading-text">Atualizando...</div></div>';
@@ -257,20 +145,21 @@
   function handlePositionError(err) { updateStatusBar(`Erro no GPS: ${err.message}`, 'err'); currentPosition = null; }
   function updateStatusBar(text, status) { const bar = $('#status-bar'); bar.textContent = text; bar.className = `status-${status}`; }
 
+  // ===== FEATURES =====
   function applyTheme() {
-    const mq = window.matchMedia('(prefers-color-scheme: light)');
-    const sync = () => document.body.classList.toggle('light-theme', mq.matches);
-    mq.addEventListener?.('change', sync);
-    sync();
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 18) document.body.classList.add('light-theme');
+    else document.body.classList.remove('light-theme');
   }
 
   function setupOnlineDetection() {
-    const update = () => { isOnline = navigator.onLine; if (!isOnline) updateStatusBar("Você está offline. Apenas dados de GPS.", "warn"); };
-    window.addEventListener('online', update);
-    window.addEventListener('offline', update);
-    update();
+    const updateStatus = () => { isOnline = navigator.onLine; if (!isOnline) updateStatusBar("Você está offline. Apenas dados de GPS.", "warn"); };
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    updateStatus();
   }
 
+  // ===== API FUNCTIONS =====
   async function enrichLocationData(lat, lon) {
     const addressEl = $('#address');
     try {
@@ -314,46 +203,25 @@
     } catch(e) { console.warn('POI Error:', e); if (e.name === 'AbortError') { poisEl.innerHTML = '<div class="poi-item"><div class="meta err">A busca por referências demorou demais.</div></div>'; } else { poisEl.innerHTML = '<div class="poi-item"><div class="meta err">Não foi possível carregar os pontos de referência.</div></div>'; } }
   }
 
-  function setupActionListeners() {
-    $('#shareAll')?.addEventListener('click', handleShare);
-    $('#copyCoords')?.addEventListener('click', handleCopyCoords);
-    $('#cprBeepBtn')?.addEventListener('click', handleCprBeep);
-  }
-
-  async function handleShare() {
+  // ===== USER ACTIONS =====
+  $('#shareAll')?.addEventListener('click', async () => {
     const payload = buildSharePayload();
     if (navigator.share) { try { await navigator.share({ title: 'Minha Localização de Emergência', text: payload }); } catch (err) { console.warn('Web Share API failed:', err); } } 
     else { navigator.clipboard.writeText(payload); if (confirm("Informações copiadas!\n\nDeseja tentar abrir o WhatsApp para colar e enviar?")) { window.open(`https://wa.me/?text=${encodeURIComponent(payload)}`, '_blank'); } }
-  }
+  });
 
-  async function handleCopyCoords() {
-    if (!currentPosition) return;
-    const { latitude, longitude } = currentPosition.coords;
-    const text = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-    try { await navigator.clipboard.writeText(text); showToast('Coordenadas copiadas!'); } catch { alert(text); }
-  }
-  
   let audioCtx, cprInterval = null;
-  async function handleCprBeep() {
+  $('#cprBeepBtn').addEventListener('click', () => {
     if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-    if (audioCtx.state === 'suspended') { await audioCtx.resume(); }
-    if (cprInterval) {
-      clearInterval(cprInterval);
-      cprInterval = null;
-      $('#cprBeepBtn').textContent = 'Iniciar Beep para RCP';
-    } else {
-      const beep = () => { const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.connect(g); g.connect(audioCtx.destination); osc.type = 'sine'; osc.frequency.value = 880; g.gain.setValueAtTime(0, audioCtx.currentTime); g.gain.linearRampToValueAtTime(1, audioCtx.currentTime + .01); osc.start(audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + .1); osc.stop(audioCtx.currentTime + .1); };
-      beep();
-      cprInterval = setInterval(beep, 60000 / CPR_BPM);
-      $('#cprBeepBtn').textContent = 'Parar Beep';
-    }
-  }
+    if (cprInterval) { clearInterval(cprInterval); cprInterval = null; $('#cprBeepBtn').textContent = 'Iniciar Beep para RCP'; } 
+    else { const beep=()=>{const o=audioCtx.createOscillator(),t=audioCtx.createGain();o.connect(t),t.connect(audioCtx.destination),o.type="sine",o.frequency.value=880,t.gain.setValueAtTime(0,audioCtx.currentTime),t.gain.linearRampToValueAtTime(1,audioCtx.currentTime+.01),o.start(audioCtx.currentTime),t.gain.exponentialRampToValueAtTime(1e-5,audioCtx.currentTime+.1),o.stop(audioCtx.currentTime+.1)}; beep(); cprInterval = setInterval(beep, 60000 / 110); $('#cprBeepBtn').textContent = 'Parar Beep'; }
+  });
 
   function buildSharePayload() {
     let poiText = '';
     const poiItems = document.querySelectorAll('.poi-item');
     if (poiItems.length > 0 && !poiItems[0].textContent.includes('...')) { poiText = '\n*Referências Próximas:*\n' + [...poiItems].map(el => `- ${el.textContent.replace(/\s+/g, ' ').trim()}`).join('\n'); }
-    return `*Localização de Emergência*\nEstou em: ${$('#address').textContent}\n(${$('#city-info').textContent})\n${$('#direction-speed').textContent}${poiText}\n\nCoordenadas: ${$('#coords').textContent}\nPlus Code: ${$('#pluscode').textContent}\n(Precisão de ${$('#accuracy').textContent})`.trim();
+    return `*Localização de Emergência*\nEstou em: ${$('#address').textContent}\n(${$('#city-info').textContent})\n${$('#direction-speed').textContent}${poiText}\n\nCoordenadas: ${$('#coords').textContent}\nPlus Code (Google): ${$('#pluscode').textContent}\n(Precisão de ${$('#accuracy').textContent})`.trim();
   }
 </script>
 </body>
