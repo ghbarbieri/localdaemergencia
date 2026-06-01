@@ -50,9 +50,10 @@
       color:var(--primary); letter-spacing:-.5px; word-break:break-word;
     }
     .primary-info h1 .house-num{
-      display:block; font-size:.55em; color:var(--fg); font-weight:700;
-      margin-top:4px; opacity:.85;
+      display:block; font-size:.5em; color:var(--fg); font-weight:800;
+      margin-top:6px; opacity:.92; letter-spacing:1px;
     }
+    .primary-info h1 .house-num .prox-label{font-size:.85em;opacity:.6;font-weight:600}
     .primary-info .sub-heading{
       font-size:var(--speed-size); line-height:1.15; font-weight:800;
       color:var(--fg); margin-top:.5rem;
@@ -64,10 +65,19 @@
 
     .poi-card h2{margin:0 0 10px 0; font-size:1rem; font-weight:700}
     .poi-list{display:grid; gap:8px; text-align:left}
-    .poi-item{border-left:3px solid var(--primary); padding:8px 10px; background:color-mix(in srgb, var(--primary) 6%, transparent); border-radius:8px}
+    .poi-item{border-left:4px solid var(--primary); padding:8px 10px; background:color-mix(in srgb, var(--primary) 6%, transparent); border-radius:8px}
+    .poi-item.ref-high{border-left-color:var(--err)}
+    .poi-item.ref-mid{border-left-color:var(--warn)}
     .poi-item .name{font-weight:700; font-size:.95rem}
     .poi-item .meta{font-size:.82rem; color:var(--muted); margin-top:2px}
     .poi-item .meta.err{color:var(--err)}
+    .poi-item .ref-badge{
+      display:inline-block; font-size:.65rem; font-weight:700; padding:2px 6px;
+      border-radius:4px; margin-left:6px; vertical-align:middle; text-transform:uppercase;
+    }
+    .badge-alta{background:var(--err);color:#fff}
+    .badge-media{background:var(--warn);color:#0b1020}
+    .badge-baixa{background:var(--muted);color:#0b1020}
 
     .secondary-info .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left}
     .secondary-info .data-point{background:color-mix(in srgb, var(--muted) 8%, transparent); padding:8px 10px; border-radius:8px}
@@ -115,7 +125,6 @@
     .modal-content .modal-actions{display:flex; gap:10px; margin-top:16px; justify-content:flex-end}
     .coords-full{grid-column:1/-1}
 
-    /* Spinner para quando está buscando */
     .spinner{display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .8s linear infinite; vertical-align:middle; margin-right:6px}
     @keyframes spin{to{transform:rotate(360deg)}}
     .coord-fallback{
@@ -133,7 +142,6 @@
   <button id="themeToggleBtn" class="theme-toggle btn btn-theme" aria-label="Alternar tema">🌙</button>
 
   <main>
-    <!-- Fallback de coordenadas visível imediatamente -->
     <div id="coordFallback" class="coord-fallback" hidden>
       <div class="cf-label">COORDENADAS ATUAIS</div>
       <div id="coordFallbackValue" style="font-weight:700;font-size:1rem">--</div>
@@ -226,6 +234,7 @@
   let currentPosition = null;
   let lastApiCoords = { lat: null, lon: null };
   let lastPoiCoords = { lat: null, lon: null };
+  let lastNumberCoords = { lat: null, lon: null };
   let isOnline = navigator.onLine;
   let hasFirstFix = false;
   let watchId = null;
@@ -236,15 +245,59 @@
   const UI_REFRESH_MS = 1000;
   const ADDRESS_REFRESH_MS = 12000;
   const POI_REFRESH_MS = 25000;
+  const NUMBER_REFRESH_MS = 12000;
   const MIN_MOVE_ADDRESS_M = 20;
   const MIN_MOVE_POI_M = 50;
-  const POI_RADIUS_M = 350;
+  const MIN_MOVE_NUMBER_M = 15;
+  const POI_RADIUS_M = 400;
+  const NUMBER_RADIUS_M = 30;
   const EMERGENCY_CONTACT_KEY = 'emerg:contact';
   const THEME_KEY = 'emerg:theme';
 
+  // ===== RANKING DE REFERÊNCIA (prioridade como ponto de referência conhecido) =====
+  // Score: quanto maior, mais conhecido como referência no Brasil
+  const POI_REF_SCORE = {
+    // ===== ALTA RELEVÂNCIA — todo mundo conhece =====
+    hospital:            { score: 100, label: '🏥 Hospital',            badge: 'alta' },
+    clinic:             { score: 90,  label: '🏥 UPA/Clínica',         badge: 'alta' },
+    fire_station:       { score: 95,  label: '🚒 Bombeiros',           badge: 'alta' },
+    police:             { score: 92,  label: '🚔 Delegacia',           badge: 'alta' },
+    school:             { score: 85,  label: '🏫 Escola',              badge: 'alta' },
+    university:         { score: 82,  label: '🎓 Universidade',        badge: 'alta' },
+    church:             { score: 75,  label: '⛪ Igreja',              badge: 'media' },
+    place_of_worship:   { score: 75,  label: '⛪ Templo',              badge: 'media' },
+
+    // ===== MÉDIA RELEVÂNCIA — bastante conhecido =====
+    fuel:               { score: 70,  label: '⛽ Posto',               badge: 'media' },
+    supermarket:        { score: 68,  label: '🛒 Supermercado',        badge: 'media' },
+    bank:               { score: 65,  label: '🏦 Banco',               badge: 'media' },
+    atm:                { score: 55,  label: '🏧 Caixa Eletrônico',    badge: 'baixa' },
+    pharmacy:           { score: 60,  label: '💊 Farmácia',            badge: 'media' },
+    post_office:        { score: 58,  label: '📮 Correios',            badge: 'media' },
+    townhall:           { score: 62,  label: '🏛️ Prefeitura',          badge: 'media' },
+    courthouse:         { score: 63,  label: '⚖️ Fórum',               badge: 'media' },
+    stadium:            { score: 72,  label: '🏟️ Estádio',             badge: 'alta' },
+    cinema:             { score: 55,  label: '🎬 Cinema',              badge: 'baixa' },
+    restaurant:         { score: 45,  label: '🍽️ Restaurante',         badge: 'baixa' },
+    fast_food:          { score: 50,  label: '🍔 Fast Food',           badge: 'baixa' },
+    bakery:             { score: 48,  label: '🍞 Padaria',             badge: 'baixa' },
+
+    // ===== BAIXA RELEVÂNCIA — útil mas menos conhecido =====
+    convenience:        { score: 40,  label: '🏪 Conveniência',        badge: 'baixa' },
+    bus_stop:           { score: 42,  label: '🚌 Ponto de Ônibus',     badge: 'baixa' },
+    bus_station:        { score: 65,  label: '🚌 Rodoviária',          badge: 'media' },
+    parking:            { score: 30,  label: '🅿️ Estacionamento',      badge: 'baixa' },
+    hotel:              { score: 50,  label: '🏨 Hotel',               badge: 'baixa' },
+    bar:                { score: 35,  label: '🍺 Bar',                 badge: 'baixa' },
+    cafe:               { score: 38,  label: '☕ Cafeteria',            badge: 'baixa' },
+    library:            { score: 45,  label: '📚 Biblioteca',          badge: 'baixa' },
+    community_centre:   { score: 40,  label: '🏠 Centro Comunitário',  badge: 'baixa' },
+    marketplace:        { score: 52,  label: '🏪 Feira/Mercado',       badge: 'baixa' },
+    mall:               { score: 70,  label: '🛍️ Shopping',            badge: 'alta' },
+  };
+
   // ===== INIT =====
   window.addEventListener('load', () => {
-    // Theme
     const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme === 'light') setLightTheme(); else setDarkTheme();
 
@@ -257,43 +310,31 @@
       return;
     }
 
-    // ESTRATÉGIA EM DUAS CAMADAS:
-    // 1) getCurrentPosition rápido (baixa precisão) para dar feedback imediato
-    // 2) watchPosition (alta precisão) para atualizações contínuas
-
-    // Camada 1: tentativa rápida
+    // Camada 1: tentativa rápida (baixa precisão)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // Primeira posição obtida rapidamente
-        applyPosition(pos, false);
-      },
-      () => {
-        // Falhou rápido, mas o watchPosition vai tentar
-        console.log('Quick fix failed, waiting for watchPosition...');
-      },
+      (pos) => { applyPosition(pos, false); },
+      () => { console.log('Quick fix failed, waiting for watchPosition...'); },
       { enableHighAccuracy: false, maximumAge: 30000, timeout: 8000 }
     );
 
-    // Camada 2: watch contínuo com alta precisão
+    // Camada 2: watch contínuo alta precisão
     watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        applyPosition(pos, true);
-      },
+      (pos) => { applyPosition(pos, true); },
       (err) => {
         const msgs = {
-          1: 'Permissão GPS negada. Vá em Configurações e ative para este site.',
-          2: 'Posição indisponível. Verifique se o GPS está ligado.',
-          3: 'Tempo esgotado. Tente ao ar livre.'
+          1: 'Permissão GPS negada. Vá em Configurações → Apps → Navegador → Permissões → Localização.',
+          2: 'Posição indisponível. Ligue o GPS e tente ao ar livre.',
+          3: 'Tempo esgotado. Verifique se o GPS está ativo.'
         };
         updateStatusBar(msgs[err.code] || `Erro GPS: ${err.message}`, 'err');
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
 
-    // Atualização periódica da UI com dados em cache
     setInterval(updateUI, UI_REFRESH_MS);
     setInterval(maybeRefreshAddress, ADDRESS_REFRESH_MS);
     setInterval(maybeRefreshPOIs, POI_REFRESH_MS);
+    setInterval(maybeRefreshNumber, NUMBER_REFRESH_MS);
   });
 
   function applyPosition(pos, fromWatch) {
@@ -302,17 +343,15 @@
 
     if (!hasFirstFix) {
       hasFirstFix = true;
-      // Mostrar coordenadas imediatamente no fallback
       showCoordFallback(latitude, longitude);
     }
 
-    // Atualizar UI imediatamente
     updateUI();
 
-    // Se for do watchPosition (alta precisão) e nunca fez geocode, faz agora
     if (fromWatch) {
       if (lastApiCoords.lat === null) fetchAddress();
       if (lastPoiCoords.lat === null) fetchPOIs();
+      if (lastNumberCoords.lat === null) fetchHouseNumber();
     }
   }
 
@@ -329,7 +368,6 @@
     const { latitude, longitude, accuracy, heading, speed } = currentPosition.coords;
     const acc = Math.round(accuracy);
 
-    // Status bar
     if (isOnline) {
       if (!hasFirstFix) {
         updateStatusBar('<span class="spinner"></span> Buscando GPS...', 'warn');
@@ -344,69 +382,55 @@
       updateStatusBar('⚠️ Offline — apenas GPS local', 'warn');
     }
 
-    // Direção e velocidade
     const headingDeg = Number.isFinite(heading) ? heading : null;
     const dirText = headingDeg !== null ? `Sentido ${dirFromBearing(headingDeg)}` : 'Sem direção';
     const speedKmh = speed ? Math.round(speed * 3.6) : 0;
     const speedText = speedKmh > 0 ? `${dirText} • ${speedKmh} km/h` : dirText;
     $('#direction-speed').textContent = speedText;
 
-    // Coordenadas
     $('#coords').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
     $('#accuracy').textContent = `${acc} m`;
 
-    // Atualizar fallback se visível
     if (!$('#coordFallback').hidden) {
       $('#coordFallbackValue').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
     }
 
-    // Plus Code
     updatePlusCode(latitude, longitude);
   }
 
   function updatePlusCode(lat, lon) {
     const el = $('#pluscode');
     try {
-      // A biblioteca expõe como "openlocationcode" (minúsculo) no escopo global
       const lib = window.openlocationcode;
       if (lib && typeof lib.encode === 'function') {
         el.textContent = lib.encode(lat, lon);
         return;
       }
-      // Fallback: Plus Code curto aproximado
-      const pcShort = encodePlusCodeShort(lat, lon);
-      el.textContent = pcShort;
+      el.textContent = encodePlusCodeShort(lat, lon);
     } catch (e) {
       el.textContent = `${lat.toFixed(4)}+${String(Math.round(((lon % 1) + 1) % 1 * 100)).padStart(2, '0')}`;
     }
   }
 
-  // Plus Code simplificado como fallback (8 dígitos)
   function encodePlusCodeShort(lat, lon) {
     const codeDigits = '23456789CFGHJKLMMPQRVWX';
-    const gridCols = 20, gridRows = 20;
     const latOffset = 90, lonOffset = 180;
     let result = '';
-
-    // Parte inteira
     const latDeg = Math.floor(lat + latOffset);
     const lonDeg = Math.floor(lon + lonOffset);
     result += codeDigits[Math.min(Math.floor(latDeg / 20), 19)];
     result += codeDigits[Math.min(Math.floor(lonDeg / 20), 19)];
     result += codeDigits[Math.min(Math.floor(latDeg / 4) % 5, 19)];
     result += codeDigits[Math.min(Math.floor(lonDeg / 4) % 5, 19)];
-
-    // Parte fracionária (simplificada - 4 dígitos)
     let latFrac = (lat + latOffset - latDeg) * 20;
     let lonFrac = (lon + lonOffset - lonDeg) * 20;
     for (let i = 0; i < 4; i++) {
-      result += codeDigits[Math.floor(latFrac) % gridRows];
-      result += codeDigits[Math.floor(lonFrac) % gridCols];
+      result += codeDigits[Math.floor(latFrac) % 20];
+      result += codeDigits[Math.floor(lonFrac) % 20];
       if (i === 1) result += '+';
-      latFrac = (latFrac - Math.floor(latFrac)) * gridRows;
-      lonFrac = (lonFrac - Math.floor(lonFrac)) * gridCols;
+      latFrac = (latFrac - Math.floor(latFrac)) * 20;
+      lonFrac = (lonFrac - Math.floor(lonFrac)) * 20;
     }
-
     return result;
   }
 
@@ -415,8 +439,7 @@
     if (!currentPosition || !isOnline || !hasFirstFix) return;
     const { latitude, longitude } = currentPosition.coords;
     if (lastApiCoords.lat !== null) {
-      const dist = haversineM(lastApiCoords.lat, lastApiCoords.lon, latitude, longitude);
-      if (dist < MIN_MOVE_ADDRESS_M) return;
+      if (haversineM(lastApiCoords.lat, lastApiCoords.lon, latitude, longitude) < MIN_MOVE_ADDRESS_M) return;
     }
     fetchAddress();
   }
@@ -425,13 +448,21 @@
     if (!currentPosition || !isOnline || !hasFirstFix) return;
     const { latitude, longitude } = currentPosition.coords;
     if (lastPoiCoords.lat !== null) {
-      const dist = haversineM(lastPoiCoords.lat, lastPoiCoords.lon, latitude, longitude);
-      if (dist < MIN_MOVE_POI_M) return;
+      if (haversineM(lastPoiCoords.lat, lastPoiCoords.lon, latitude, longitude) < MIN_MOVE_POI_M) return;
     }
     fetchPOIs();
   }
 
-  // ===== GEOCODING (otimizado para Brasil, baixa banda) =====
+  function maybeRefreshNumber() {
+    if (!currentPosition || !isOnline || !hasFirstFix) return;
+    const { latitude, longitude } = currentPosition.coords;
+    if (lastNumberCoords.lat !== null) {
+      if (haversineM(lastNumberCoords.lat, lastNumberCoords.lon, latitude, longitude) < MIN_MOVE_NUMBER_M) return;
+    }
+    fetchHouseNumber();
+  }
+
+  // ===== GEOCODING + NÚMERO =====
   async function fetchAddress() {
     if (!currentPosition) return;
     const { latitude, longitude } = currentPosition.coords;
@@ -451,33 +482,33 @@
         headers: { 'User-Agent': 'EmergenciaBRApp/1.0' }
       });
       clearTimeout(timeoutId);
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const a = data.address || {};
 
       let roadName = '';
-      let houseNumber = '';
-
       const rawRoad = a.road || a.pedestrian || a.footway || a.highway || a.path || '';
       if (rawRoad) {
         roadName = rawRoad
-          .replace(/^Rua /, 'R. ')
-          .replace(/^Avenida /, 'Av. ')
-          .replace(/^Travessa /, 'Trav. ')
-          .replace(/^Estrada /, 'Estr. ')
-          .replace(/^Rodovia /, 'Rod. ')
-          .replace(/^Alameda /, 'Al. ')
-          .replace(/^Praça /, 'Pç. ')
-          .replace(/^Largo /, 'Lg. ');
+          .replace(/^Rua /, 'R. ').replace(/^Avenida /, 'Av. ')
+          .replace(/^Travessa /, 'Trav. ').replace(/^Estrada /, 'Estr. ')
+          .replace(/^Rodovia /, 'Rod. ').replace(/^Alameda /, 'Al. ')
+          .replace(/^Praça /, 'Pç. ').replace(/^Largo /, 'Lg. ')
+          .replace(/^Servidão /, 'Serv. ');
       }
 
-      houseNumber = a.house_number || '';
+      const nominatimNumber = a.house_number || '';
 
       if (roadName) {
         let html = roadName;
-        if (houseNumber) {
-          html += `<span class="house-num">Nº ${houseNumber}</span>`;
+        if (nominatimNumber) {
+          html += `<span class="house-num">Nº ${nominatimNumber}</span>`;
+        } else {
+          // Se Nominatim não trouxe número, tenta buscar via Overpass
+          const overpassNum = await quickFetchNumber(latitude, longitude);
+          if (overpassNum) {
+            html += `<span class="house-num"><span class="prox-label">Próx. ao</span> Nº ${overpassNum}</span>`;
+          }
         }
         addrEl.innerHTML = html;
       } else {
@@ -491,14 +522,73 @@
     } catch (e) {
       console.warn('Geocode error:', e);
       addrEl.textContent = e.name === 'AbortError' ? 'Tempo esgotado' : 'Endereço indisponível';
-      addrEl.innerHTML = '';
-      addrEl.textContent = e.name === 'AbortError' ? 'Tempo esgotado' : 'Endereço indisponível';
     } finally {
       addrEl.classList.remove('loading-text');
     }
   }
 
-  // ===== POIs (consulta otimizada, menos dados) =====
+  // Busca rápida de número de casa via Overpass (raio pequeno)
+  async function quickFetchNumber(lat, lon) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const q = `[out:json][timeout:5];
+        (
+          node(around:${NUMBER_RADIUS_M},${lat},${lon})["addr:housenumber"];
+          way(around:${NUMBER_RADIUS_M},${lat},${lon})["addr:housenumber"];
+        );
+        out center 5;`;
+      const res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: `data=${encodeURIComponent(q)}`,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!json.elements || json.elements.length === 0) return null;
+
+      // Ordenar por distância e pegar o mais próximo
+      let closest = null;
+      let closestDist = Infinity;
+      for (const el of json.elements) {
+        const elat = el.lat || (el.center && el.center.lat);
+        const elon = el.lon || (el.center && el.center.lon);
+        if (!elat || !elon) continue;
+        const d = haversineM(lat, lon, elat, elon);
+        if (d < closestDist) { closestDist = d; closest = el; }
+      }
+      if (closest && closest.tags && closest.tags['addr:housenumber']) {
+        return closest.tags['addr:housenumber'];
+      }
+      return null;
+    } catch (e) {
+      console.warn('Number fetch error:', e);
+      return null;
+    }
+  }
+
+  // Busca dedicada de número (independente do endereço)
+  async function fetchHouseNumber() {
+    if (!currentPosition) return;
+    const { latitude, longitude } = currentPosition.coords;
+    lastNumberCoords = { lat: latitude, lon: longitude };
+
+    const addrEl = $('#address');
+    // Se o endereço atual já tem número do Nominatim, não sobrescreve
+    if (addrEl.querySelector('.house-num')) return;
+
+    try {
+      const num = await quickFetchNumber(latitude, longitude);
+      if (num && addrEl.textContent) {
+        addrEl.innerHTML = addrEl.textContent + `<span class="house-num"><span class="prox-label">Próx. ao</span> Nº ${num}</span>`;
+      }
+    } catch (e) {
+      console.warn('House number error:', e);
+    }
+  }
+
+  // ===== POIs com RANKING DE RELEVÂNCIA =====
   async function fetchPOIs() {
     if (!currentPosition) return;
     const { latitude, longitude } = currentPosition.coords;
@@ -513,62 +603,85 @@
     try {
       const q = `[out:json][timeout:8];
         (
-          node["amenity"~"hospital|clinic|fire_station|police|pharmacy|fuel"](around:${POI_RADIUS_M},${latitude},${longitude});
-          node["shop"~"supermarket|convenience"](around:${POI_RADIUS_M},${latitude},${longitude});
-          node["highway"~"bus_stop"](around:${POI_RADIUS_M},${latitude},${longitude});
+          node["amenity"~"hospital|clinic|fire_station|police|school|university|bank|atm|pharmacy|post_office|townhall|courthouse|stadium|cinema|restaurant|fast_food|bakery|bus_stop|bus_station|parking|hotel|bar|cafe|library|community_centre|marketplace|place_of_worship"](around:${POI_RADIUS_M},${latitude},${longitude});
+          way["amenity"~"hospital|clinic|fire_station|police|school|university|bank|pharmacy|post_office|townhall|courthouse|stadium|cinema|restaurant|fast_food|bakery|bus_station|parking|hotel|library|community_centre|marketplace|place_of_worship"](around:${POI_RADIUS_M},${latitude},${longitude});
+          node["shop"~"supermarket|convenience|mall"](around:${POI_RADIUS_M},${latitude},${longitude});
+          way["shop"~"supermarket|convenience|mall"](around:${POI_RADIUS_M},${latitude},${longitude});
+          node["building"~"yes|church|school|university|hospital|hotel|civic"](around:${POI_RADIUS_M},${latitude},${longitude});
         );
-        out center 15;`;
+        out center 20;`;
 
       const res = await fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
         body: `data=${encodeURIComponent(q)}`,
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        signal: controller.signal
       });
       clearTimeout(timeoutId);
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
-      const poiLabels = {
-        hospital: '🏥 Hospital', clinic: '🏥 Clínica', fire_station: '🚒 Bombeiros',
-        police: '🚔 Delegacia', pharmacy: '💊 Farmácia', fuel: '⛽ Posto',
-        supermarket: '🛒 Supermercado', convenience: '🏪 Conveniência',
-        bus_stop: '🚌 Ponto de Ônibus'
-      };
-
       const items = (json.elements || [])
         .map((e) => {
           const clat = e.lat || (e.center && e.center.lat);
           const clon = e.lon || (e.center && e.center.lon);
           if (!clat || !clon) return null;
-          const tagKey = e.tags?.amenity || e.tags?.shop || e.tags?.highway;
+          const tags = e.tags || {};
+          const tagKey = tags.amenity || tags.shop || tags.building;
+
+          const refInfo = POI_REF_SCORE[tagKey] || null;
+          // Se não tem score, ignora (não é referência útil)
+          if (!refInfo) return null;
+
           return {
-            label: poiLabels[tagKey] || '📍 Referência',
-            name: e.tags?.name || e.tags?.brand || 'Sem nome',
+            score: refInfo.score,
+            badge: refInfo.badge,
+            label: refInfo.label,
+            name: tags.name || tags.brand || tags.operator || tags['name:pt'] || 'Sem nome',
             dist: Math.round(haversineM(latitude, longitude, clat, clon)),
             dir: dirFromBearing(calcBearing(latitude, longitude, clat, clon)),
-            road: e.tags?.['addr:street'] || null,
-            number: e.tags?.['addr:housenumber'] || null
+            road: tags['addr:street'] || null,
+            number: tags['addr:housenumber'] || null
           };
         })
-        .filter(Boolean)
-        .sort((a, b) => a.dist - b.dist)
-        .slice(0, 5);
+        .filter(Boolean);
 
-      if (items.length === 0) {
-        poisEl.innerHTML = '<div class="poi-item"><div class="meta">Nenhum ponto encontrado num raio de ' + POI_RADIUS_M + 'm.</div></div>';
+      // Duplicar nomes: manter apenas o mais próximo de cada nome
+      const seen = new Set();
+      const unique = items.filter(item => {
+        const key = item.name.toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // ORDENAÇÃO: score de referência DESC, depois distância ASC
+      // Score alto = referência mais conhecida, aparece primeiro
+      unique.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.dist - b.dist;
+      });
+
+      // Pegar top 8
+      const top = unique.slice(0, 8);
+
+      if (top.length === 0) {
+        poisEl.innerHTML = '<div class="poi-item"><div class="meta">Nenhum ponto de referência conhecido num raio de ' + POI_RADIUS_M + 'm.</div></div>';
         return;
       }
 
       poisEl.innerHTML = '';
-      items.forEach((item) => {
+      top.forEach((item) => {
         const div = document.createElement('div');
-        div.className = 'poi-item';
+        div.className = `poi-item ref-${item.badge === 'alta' ? 'high' : item.badge === 'media' ? 'mid' : ''}`;
         let metaHtml = `${item.dist}m • ${item.dir}`;
         if (item.road) metaHtml += ` • ${item.road}`;
         if (item.number) metaHtml += `, ${item.number}`;
-        div.innerHTML = `<div class="name">${item.label}: ${item.name}</div><div class="meta">${metaHtml}</div>`;
+        const badgeClass = item.badge === 'alta' ? 'badge-alta' : item.badge === 'media' ? 'badge-media' : 'badge-baixa';
+        const badgeText = item.badge === 'alta' ? 'Ref. forte' : item.badge === 'media' ? 'Referência' : 'Ponto';
+        div.innerHTML = `
+          <div class="name">${item.label}: ${item.name}<span class="ref-badge ${badgeClass}">${badgeText}</span></div>
+          <div class="meta">${metaHtml}</div>`;
         poisEl.appendChild(div);
       });
 
@@ -644,7 +757,8 @@
   function buildAlertPayload() {
     if (!currentPosition) return 'Localização indisponível.';
     const { latitude, longitude } = currentPosition.coords;
-    const addrText = $('#address').textContent || 'Endereço desconhecido';
+    const addrEl = $('#address');
+    const addrText = addrEl.textContent || 'Endereço desconhecido';
     const cityText = $('#city-info').textContent || '';
     const dirSpeed = $('#direction-speed').textContent;
     const plusCode = $('#pluscode').textContent;
@@ -705,16 +819,13 @@
       if (audioCtx.state === 'closed') return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = 880;
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'sine'; osc.frequency.value = 880;
       const now = audioCtx.currentTime;
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.8, now + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc.start(now);
-      osc.stop(now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
     };
 
     beep();
